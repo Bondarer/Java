@@ -1,6 +1,6 @@
-package ex03;
+package ex5;
 import java.io.*;
-import java.util.ArrayList;
+import java.util.*;
 
 interface View {
     void viewShow();
@@ -41,6 +41,42 @@ class NumberRepresentation implements Serializable {
     @Override
     public String toString() {
         return number + "\t" + binary + "\t" + octal + "\t" + hexadecimal;
+    }
+}
+
+class Command {
+    private List<Runnable> commands = new ArrayList<>();
+
+    public void addCommand(Runnable command) {
+        commands.add(command);
+    }
+
+    public void execute() {
+        commands.forEach(Runnable::run);
+    }
+}
+
+class UndoManager {
+    private static UndoManager instance;
+    private Stack<Runnable> history = new Stack<>();
+
+    private UndoManager() {}
+
+    public static UndoManager getInstance() {
+        if (instance == null) {
+            instance = new UndoManager();
+        }
+        return instance;
+    }
+
+    public void addCommand(Runnable command) {
+        history.push(command);
+    }
+
+    public void undo() {
+        if (!history.isEmpty()) {
+            history.pop().run();
+        }
     }
 }
 
@@ -113,3 +149,36 @@ class ViewableResult implements Viewable {
     }
 }
 
+public class Factory {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Введіть ширину колонки для таблиці: ");
+        int columnWidth = scanner.nextInt();
+        View view = new ViewableResult(columnWidth).getView();
+        UndoManager undoManager = UndoManager.getInstance();
+        Command command = new Command();
+
+        view.viewInit();
+        command.addCommand(view::viewShow);
+        undoManager.addCommand(view::viewShow);
+
+        System.out.println("До збереження:");
+        command.execute();
+
+        try {
+            view.viewSave();
+            view.viewRestore();
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Після відновлення:");
+        command.execute();
+
+        System.out.print("Виконати відкат? (yes/no): ");
+        if (scanner.next().equalsIgnoreCase("yes")) {
+            undoManager.undo();
+            System.out.println("Скасовано останню команду.");
+        }
+    }
+}
